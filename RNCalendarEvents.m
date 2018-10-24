@@ -37,7 +37,7 @@ static NSString *const _attendees    = @"attendees";
             lroundf(r * 255),
             lroundf(g * 255),
             lroundf(b * 255)];
-}   
+}
 
 @synthesize bridge = _bridge;
 
@@ -510,6 +510,56 @@ RCT_EXPORT_MODULE()
             else {
                 [formattedAttendee setValue:@"" forKey:@"name"];
             }
+
+            NSString *status;
+            switch (attendee.participantStatus) {
+                case EKParticipantStatusPending:
+                    status = @"pending";
+                    break;
+                case EKParticipantStatusAccepted:
+                    status = @"accepted";
+                    break;
+                case EKParticipantStatusDeclined:
+                    status = @"declined";
+                    break;
+                case EKParticipantStatusTentative:
+                    status = @"tentative";
+                    break;
+                case EKParticipantStatusDelegated:
+                    status = @"delegated";
+                    break;
+                case EKParticipantStatusCompleted:
+                    status = @"completed";
+                    break;
+                case EKParticipantStatusInProcess:
+                    status = @"inProcess";
+                    break;
+                default:
+                    status = @"unknown";
+                    break;
+            }
+            [formattedAttendee setValue:status forKey:@"status"];
+
+            NSString *role;
+            switch (attendee.participantRole) {
+                case EKParticipantRoleChair:
+                    role = @"chair";
+                    break;
+                case EKParticipantRoleOptional:
+                    role = @"optional";
+                    break;
+                case EKParticipantRoleRequired:
+                    role = @"required";
+                    break;
+                case EKParticipantRoleNonParticipant:
+                    role = @"nonParticipant";
+                    break;
+                default:
+                    role = @"unknown";
+                    break;
+            }
+            [formattedAttendee setValue:role forKey:@"role"];
+
             [attendees addObject:formattedAttendee];
         }
         [formedCalendarEvent setValue:attendees forKey:_attendees];
