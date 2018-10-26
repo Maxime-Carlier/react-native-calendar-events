@@ -514,7 +514,7 @@ RCT_EXPORT_MODULE()
             NSString *status;
             switch (attendee.participantStatus) {
                 case EKParticipantStatusPending:
-                    status = @"pending";
+                    status = @"needs-action";
                     break;
                 case EKParticipantStatusAccepted:
                     status = @"accepted";
@@ -526,14 +526,8 @@ RCT_EXPORT_MODULE()
                     status = @"tentative";
                     break;
                 case EKParticipantStatusDelegated:
-                    status = @"delegated";
-                    break;
                 case EKParticipantStatusCompleted:
-                    status = @"completed";
-                    break;
                 case EKParticipantStatusInProcess:
-                    status = @"inProcess";
-                    break;
                 default:
                     status = @"unknown";
                     break;
@@ -546,14 +540,12 @@ RCT_EXPORT_MODULE()
                     role = @"chair";
                     break;
                 case EKParticipantRoleOptional:
-                    role = @"optional";
+                    role = @"opt-participant";
                     break;
                 case EKParticipantRoleRequired:
-                    role = @"required";
+                    role = @"req-participant";
                     break;
                 case EKParticipantRoleNonParticipant:
-                    role = @"nonParticipant";
-                    break;
                 default:
                     role = @"unknown";
                     break;
