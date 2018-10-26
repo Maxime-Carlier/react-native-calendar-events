@@ -38,7 +38,7 @@ static NSString *const _rrule = @"rrule";
             lroundf(r * 255),
             lroundf(g * 255),
             lroundf(b * 255)];
-}   
+}
 
 @synthesize bridge = _bridge;
 
@@ -512,6 +512,48 @@ RCT_EXPORT_MODULE()
             else {
                 [formattedAttendee setValue:@"" forKey:@"name"];
             }
+
+            NSString *status;
+            switch (attendee.participantStatus) {
+                case EKParticipantStatusPending:
+                    status = @"needs-action";
+                    break;
+                case EKParticipantStatusAccepted:
+                    status = @"accepted";
+                    break;
+                case EKParticipantStatusDeclined:
+                    status = @"declined";
+                    break;
+                case EKParticipantStatusTentative:
+                    status = @"tentative";
+                    break;
+                case EKParticipantStatusDelegated:
+                case EKParticipantStatusCompleted:
+                case EKParticipantStatusInProcess:
+                default:
+                    status = @"unknown";
+                    break;
+            }
+            [formattedAttendee setValue:status forKey:@"status"];
+
+            NSString *role;
+            switch (attendee.participantRole) {
+                case EKParticipantRoleChair:
+                    role = @"chair";
+                    break;
+                case EKParticipantRoleOptional:
+                    role = @"opt-participant";
+                    break;
+                case EKParticipantRoleRequired:
+                    role = @"req-participant";
+                    break;
+                case EKParticipantRoleNonParticipant:
+                default:
+                    role = @"unknown";
+                    break;
+            }
+            [formattedAttendee setValue:role forKey:@"role"];
+
             [attendees addObject:formattedAttendee];
         }
         [formedCalendarEvent setValue:attendees forKey:_attendees];
