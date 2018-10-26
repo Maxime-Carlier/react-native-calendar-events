@@ -984,10 +984,48 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
             attendee.putString("name", cursor.getString( 2));
             attendee.putString("email", cursor.getString(3));
 
+
+            int attendeeeType = cursor.getInt(4);
+            int attendeeRelashionship = cursor.getInt(5);
+            String attendeeRole = getAttendeeRole(attendeeRelashionship, attendeeeType);
+
+            attendee.putString("role", attendeeRole);
+            attendee.putString("status", getAttendeeStatus(cursor.getInt(6)));
+
+
             results.pushMap(attendee);
         }
 
         return results;
+    }
+
+    private String getAttendeeStatus(int attendeeStatus) {
+        switch (attendeeStatus) {
+            case CalendarContract.Attendees.ATTENDEE_STATUS_ACCEPTED:
+                return "accepted";
+            case CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED:
+                return "declined";
+            case CalendarContract.Attendees.ATTENDEE_STATUS_INVITED:
+                return "needs-action";
+            case CalendarContract.Attendees.ATTENDEE_STATUS_TENTATIVE:
+                return "tentative";
+            default:
+                return "unknown";
+        }
+    }
+
+    private String getAttendeeRole(int attendeeRelashionship, int attendeeType) {
+        if (attendeeRelashionship == CalendarContract.Attendees.RELATIONSHIP_ORGANIZER) {
+            return "chair";
+        } else if(attendeeRelashionship == CalendarContract.Attendees.RELATIONSHIP_ATTENDEE
+                && attendeeType == CalendarContract.Attendees.TYPE_REQUIRED) {
+            return "req-participant";
+        } else if(attendeeRelashionship == CalendarContract.Attendees.RELATIONSHIP_ATTENDEE
+                && attendeeType == CalendarContract.Attendees.TYPE_OPTIONAL) {
+            return "opt-participant";
+        } else {
+            return "unknown";
+        }
     }
     // endregion
 
