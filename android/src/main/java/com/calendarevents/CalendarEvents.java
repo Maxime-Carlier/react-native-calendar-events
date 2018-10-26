@@ -1009,6 +1009,7 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
                 return "needs-action";
             case CalendarContract.Attendees.ATTENDEE_STATUS_TENTATIVE:
                 return "tentative";
+            case CalendarContract.Attendees.ATTENDEE_STATUS_NONE:
             default:
                 return "unknown";
         }
@@ -1023,7 +1024,7 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
         } else if(attendeeRelashionship == CalendarContract.Attendees.RELATIONSHIP_ATTENDEE
                 && attendeeType == CalendarContract.Attendees.TYPE_OPTIONAL) {
             return "opt-participant";
-        } else {
+        } else { // NONE, PERFORMER, SPEAKER
             return "unknown";
         }
     }
