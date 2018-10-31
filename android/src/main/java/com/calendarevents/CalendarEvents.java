@@ -346,8 +346,8 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
             eventValues.put(CalendarContract.Events.EVENT_LOCATION, details.getString("location"));
         }
 
+        Calendar startCal = Calendar.getInstance();
         if (details.hasKey("startDate")) {
-            Calendar startCal = Calendar.getInstance();
             ReadableType type = details.getType("startDate");
 
             try {
@@ -363,8 +363,8 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
             }
         }
 
+        Calendar endCal = Calendar.getInstance();
         if (details.hasKey("endDate")) {
-            Calendar endCal = Calendar.getInstance();
             ReadableType type = details.getType("endDate");
 
             try {
@@ -392,17 +392,12 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
 
             if (recurrenceRule.hasKey("frequency")) {
                 String frequency = recurrenceRule.getString("frequency");
-                String duration = "PT1H";
                 Integer interval = null;
                 Integer occurrence = null;
                 String endDate = null;
 
                 if (recurrenceRule.hasKey("interval")) {
                     interval = recurrenceRule.getInt("interval");
-                }
-
-                if (recurrenceRule.hasKey("duration")) {
-                    duration = recurrenceRule.getString("duration");
                 }
 
                 if (recurrenceRule.hasKey("occurrence")) {
@@ -423,11 +418,16 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
                 }
 
                 String rule = createRecurrenceRule(frequency, interval, endDate, occurrence);
-                if (duration != null) {
-                    eventValues.put(CalendarContract.Events.DURATION, duration);
-                }
+
                 if (rule != null) {
                     eventValues.put(CalendarContract.Events.RRULE, rule);
+
+                    if (details.hasKey("startDate") && details.hasKey("endDate")) {
+                        long duration = endCal.getTime().getTime() - startCal.getTime().getTime();
+                        String durationString = "PT" + ((int) duration / 1000) + 'S';
+                        eventValues.put(CalendarContract.Events.DTEND, (Integer) null);
+                        eventValues.put(CalendarContract.Events.DURATION, durationString);
+                    }
                 }
             }
         }
@@ -869,10 +869,6 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
 
             event.putString("recurrence", recurrenceRules[0].split("=")[1].toLowerCase());
             recurrenceRule.putString("frequency", recurrenceRules[0].split("=")[1].toLowerCase());
-
-            if (cursor.getColumnIndex(CalendarContract.Events.DURATION) != -1 && cursor.getString(cursor.getColumnIndex(CalendarContract.Events.DURATION)) != null) {
-                recurrenceRule.putString("duration", cursor.getString(cursor.getColumnIndex(CalendarContract.Events.DURATION)));
-            }
 
             if (recurrenceRules.length >= 2 && recurrenceRules[1].split("=")[0].equals("INTERVAL")) {
                 recurrenceRule.putInt("interval", Integer.parseInt(recurrenceRules[1].split("=")[1]));
