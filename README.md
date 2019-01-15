@@ -243,6 +243,9 @@ Returns: **Promise**
 | **endDate**       | Date             | Event recurring end date. This overrides occurrence. | ✓ | ✓ |
 | **occurrence**    | Number           | Number of event occurrences. | ✓ | ✓ |
 | **interval**      | Number           | The interval between events of this recurrence. | ✓ | ✓ |
+| **weekDays**      | Array<String>    | The week days of the recurrence. Used when frequency is `weekly` or when frequency is `monthly` in combination with `positions`| ✓ | ✓ |
+| **monthDays**      | Array<Number>   | The month days of the recurrence. | ✓ | ✓ |
+| **positions**      | Array<Number>   | The positions of days of the recurrence. Used when frequency is `monthly` in combination with `weekDays`| ✓ | ✓ |
 
 
 ### Alarms

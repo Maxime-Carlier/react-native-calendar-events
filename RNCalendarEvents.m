@@ -141,7 +141,7 @@ RCT_EXPORT_MODULE()
     }
 
     if (recurrence) {
-        EKRecurrenceRule *rule = [self createRecurrenceRule:recurrence interval:0 occurrence:0 endDate:nil];
+        EKRecurrenceRule *rule = [self createRecurrenceRule:recurrence interval:0 occurrence:0 endDate:nil weekDays:nil monthDays:nil positions:nil];
         if (rule) {
             calendarEvent.recurrenceRules = [NSArray arrayWithObject:rule];
         }
@@ -152,8 +152,13 @@ RCT_EXPORT_MODULE()
         NSInteger interval = [RCTConvert NSInteger:recurrenceRule[@"interval"]];
         NSInteger occurrence = [RCTConvert NSInteger:recurrenceRule[@"occurrence"]];
         NSDate *endDate = [RCTConvert NSDate:recurrenceRule[@"endDate"]];
-
-        EKRecurrenceRule *rule = [self createRecurrenceRule:frequency interval:interval occurrence:occurrence endDate:endDate];
+        
+        NSArray *monthDays = [RCTConvert NSArray:recurrenceRule[@"monthDays"]];
+        NSArray *positions = [RCTConvert NSArray:recurrenceRule[@"positions"]];
+        
+        NSArray *weekDays = [RCTConvert NSArray:recurrenceRule[@"weekDays"]];
+        
+        EKRecurrenceRule *rule = [self createRecurrenceRule:frequency interval:interval occurrence:occurrence endDate:endDate weekDays:weekDays monthDays:monthDays positions:positions];
         if (rule) {
             calendarEvent.recurrenceRules = [NSArray arrayWithObject:rule];
         } else {
@@ -300,7 +305,7 @@ RCT_EXPORT_MODULE()
     return recurrence;
 }
 
--(EKRecurrenceRule *)createRecurrenceRule:(NSString *)frequency interval:(NSInteger)interval occurrence:(NSInteger)occurrence endDate:(NSDate *)endDate
+-(EKRecurrenceRule *)createRecurrenceRule:(NSString *)frequency interval:(NSInteger)interval occurrence:(NSInteger)occurrence endDate:(NSDate *)endDate weekDays:(NSArray *)weekDays monthDays:(NSArray *)monthDays positions:(NSArray *)positions
 {
     EKRecurrenceRule *rule = nil;
     EKRecurrenceEnd *recurrenceEnd = nil;
@@ -308,6 +313,27 @@ RCT_EXPORT_MODULE()
     NSArray *validFrequencyTypes = @[@"daily", @"weekly", @"monthly", @"yearly"];
 
     if (frequency && [validFrequencyTypes containsObject:frequency]) {
+        NSArray *recurrenceMonthDays = nil;
+        NSArray *recurrencePositions = nil;
+        
+        NSMutableArray *recurrenceWeekDays = nil;
+        if (weekDays && [weekDays count] > 0) {
+            recurrenceWeekDays = [[NSMutableArray alloc] init];
+            for (NSString *weekDay in weekDays) {
+                EKWeekday day = [self weekDayMatchingName:weekDay];
+                if (day) {
+                    [recurrenceWeekDays addObject:[EKRecurrenceDayOfWeek dayOfWeek:day]];
+                }
+            }
+        }
+        
+        if (monthDays && [monthDays count] > 0) {
+            recurrenceMonthDays = monthDays;
+        }
+        
+        if (positions && [positions count] > 0) {
+            recurrencePositions = positions;
+        }
 
         if (endDate) {
             recurrenceEnd = [EKRecurrenceEnd recurrenceEndWithEndDate:endDate];
@@ -318,10 +344,8 @@ RCT_EXPORT_MODULE()
         if (interval > 1) {
             recurrenceInterval = interval;
         }
-
-        rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency:[self frequencyMatchingName:frequency]
-                                                            interval:recurrenceInterval
-                                                                 end:recurrenceEnd];
+        
+        rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency:[self frequencyMatchingName:frequency] interval:recurrenceInterval daysOfTheWeek:recurrenceWeekDays daysOfTheMonth:recurrenceMonthDays monthsOfTheYear:nil weeksOfTheYear:nil daysOfTheYear:nil setPositions:recurrencePositions end:recurrenceEnd];
     }
     return rule;
 }
@@ -340,6 +364,26 @@ RCT_EXPORT_MODULE()
         default:
             return @"";
     }
+}
+
+-(EKWeekday)weekDayMatchingName:(NSString *)name
+{
+    if ([name isEqualToString:@"MO"]) {
+        return EKWeekdayMonday;
+    } else if ([name isEqualToString:@"TU"]) {
+        return EKWeekdayTuesday;
+    } else if ([name isEqualToString:@"WE"]) {
+        return EKWeekdayWednesday;
+    } else if ([name isEqualToString:@"TH"]) {
+        return EKWeekdayThursday;
+    } else if ([name isEqualToString:@"FR"]) {
+        return EKWeekdayFriday;
+    } else if ([name isEqualToString:@"SA"]) {
+        return EKWeekdaySaturday;
+    } else if ([name isEqualToString:@"SU"]) {
+        return EKWeekdaySunday;
+    }
+    return nil;
 }
 
 #pragma mark -
