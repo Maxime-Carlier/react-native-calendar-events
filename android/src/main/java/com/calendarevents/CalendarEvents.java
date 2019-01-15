@@ -381,7 +381,7 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
         }
 
         if (details.hasKey("recurrence")) {
-            String rule = createRecurrenceRule(details.getString("recurrence"), null, null, null);
+            String rule = createRecurrenceRule(details.getString("recurrence"), null, null, null, null, null, null);
             if (rule != null) {
                 eventValues.put(CalendarContract.Events.RRULE, rule);
             }
@@ -394,7 +394,11 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
                 String frequency = recurrenceRule.getString("frequency");
                 Integer interval = null;
                 Integer occurrence = null;
+                ReadableArray positions = null;
+                ReadableArray weekDays = null;
+                ReadableArray monthDays = null;
                 String endDate = null;
+
 
                 if (recurrenceRule.hasKey("interval")) {
                     interval = recurrenceRule.getInt("interval");
@@ -403,6 +407,19 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
                 if (recurrenceRule.hasKey("occurrence")) {
                     occurrence = recurrenceRule.getInt("occurrence");
                 }
+
+                if (recurrenceRule.hasKey("weekDays")) {
+                    weekDays = recurrenceRule.getArray("weekDays");
+                }
+
+                if (recurrenceRule.hasKey("positions")) {
+                    positions = recurrenceRule.getArray("positions");
+                }
+
+                if (recurrenceRule.hasKey("monthDays")) {
+                    monthDays = recurrenceRule.getArray("monthDays");
+                }
+
 
                 if (recurrenceRule.hasKey("endDate")) {
                     ReadableType type = recurrenceRule.getType("endDate");
@@ -417,7 +434,7 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
                     }
                 }
 
-                String rule = createRecurrenceRule(frequency, interval, endDate, occurrence);
+                String rule = createRecurrenceRule(frequency, interval, endDate, occurrence, positions, weekDays, monthDays);
 
                 if (rule != null) {
                     eventValues.put(CalendarContract.Events.RRULE, rule);
@@ -789,15 +806,48 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
     //endregion
 
     //region Recurrence Rule
-    private String createRecurrenceRule(String recurrence, Integer interval, String endDate, Integer occurrence) {
+    private String createRecurrenceRule(String recurrence, Integer interval, String endDate, Integer occurrence, ReadableArray positions, ReadableArray weekDays, ReadableArray monthDays) {
         String rrule;
 
         if (recurrence.equals("daily")) {
             rrule=  "FREQ=DAILY";
         } else if (recurrence.equals("weekly")) {
             rrule = "FREQ=WEEKLY";
+            if (weekDays != null && weekDays.size() > 0) {
+                rrule += ";BYDAY=";
+                for (int i = 0; i < weekDays.size(); i++) {
+                    if (i != 0) {
+                        rrule += ",";
+                    }
+                    rrule += weekDays.getString(i);
+                }
+            }
         }  else if (recurrence.equals("monthly")) {
             rrule = "FREQ=MONTHLY";
+            if (monthDays != null && monthDays.size() > 0) {
+                rrule += ";BYMONTHDAY=";
+                for (int i = 0; i < monthDays.size(); i++) {
+                    if (i != 0) {
+                        rrule += ",";
+                    }
+                    rrule += Integer.toString(monthDays.getInt(i));
+                }
+            } else if (positions != null && positions.size() > 0 && weekDays != null && weekDays.size() > 0) {
+                rrule += ";BYDAY=";
+                for (int i = 0; i < weekDays.size(); i++) {
+                    if (i != 0) {
+                        rrule += ",";
+                    }
+                    rrule += weekDays.getString(i);
+                }
+                rrule += ";BYSETPOS=";
+                for (int i = 0; i < positions.size(); i++) {
+                    if (i != 0) {
+                        rrule += ",";
+                    }
+                    rrule += Integer.toString(positions.getInt(i));
+                }
+            }
         } else if (recurrence.equals("yearly")) {
             rrule = "FREQ=YEARLY";
         } else {
