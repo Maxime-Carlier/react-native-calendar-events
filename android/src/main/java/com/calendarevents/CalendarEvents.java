@@ -441,7 +441,7 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
 
                     if (details.hasKey("startDate") && details.hasKey("endDate")) {
                         long duration = endCal.getTime().getTime() - startCal.getTime().getTime();
-                        String durationString = "PT" + ((int) duration / 1000) + 'S';
+                        String durationString = "PT" + ((int) duration / 60000) + 'M';
                         eventValues.put(CalendarContract.Events.DTEND, (Integer) null);
                         eventValues.put(CalendarContract.Events.DURATION, durationString);
                     }
