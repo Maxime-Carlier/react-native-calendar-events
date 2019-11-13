@@ -112,7 +112,8 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
                 CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
                 CalendarContract.Calendars.ALLOWED_AVAILABILITY,
                 CalendarContract.Calendars.ACCOUNT_TYPE,
-                CalendarContract.Calendars.CALENDAR_COLOR
+                CalendarContract.Calendars.CALENDAR_COLOR,
+                CalendarContract.Calendars.VISIBLE
         }, null, null, null);
 
         return serializeEventCalendars(cursor);
@@ -135,7 +136,8 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
                 CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
                 CalendarContract.Calendars.ALLOWED_AVAILABILITY,
                 CalendarContract.Calendars.ACCOUNT_TYPE,
-                CalendarContract.Calendars.CALENDAR_COLOR
+                CalendarContract.Calendars.CALENDAR_COLOR,
+                CalendarContract.Calendars.VISIBLE
         }, null, null, null);
 
         if (cursor != null && cursor.moveToFirst()) {
@@ -991,6 +993,7 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
         calendar.putString("source", cursor.getString(2));
         calendar.putArray("allowedAvailabilities", calendarAllowedAvailabilitiesFromDBString(cursor.getString(5)));
         calendar.putString("type", cursor.getString(6));
+        calendar.putBoolean("visible", cursor.getInt(8) == 1);
 
         String colorHex = "#FFFFFF";
         try {
