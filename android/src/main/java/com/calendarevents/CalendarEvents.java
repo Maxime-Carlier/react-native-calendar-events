@@ -516,6 +516,7 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
                 Integer weekPositionInMonth = null;
 
 
+
                 if (recurrenceRule.hasKey("interval")) {
                     interval = recurrenceRule.getInt("interval");
                 }
