@@ -11,8 +11,8 @@ import android.Manifest;
 import android.database.DatabaseUtils;
 import android.net.Uri;
 import android.provider.CalendarContract;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import android.database.Cursor;
 import android.accounts.Account;
 import android.accounts.AccountManager;
@@ -127,7 +127,8 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
                 CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
                 CalendarContract.Calendars.ALLOWED_AVAILABILITY,
                 CalendarContract.Calendars.ACCOUNT_TYPE,
-                CalendarContract.Calendars.CALENDAR_COLOR
+                CalendarContract.Calendars.CALENDAR_COLOR,
+                CalendarContract.Calendars.VISIBLE
         }, null, null, null);
 
         return serializeEventCalendars(cursor);
@@ -150,7 +151,8 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
                 CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
                 CalendarContract.Calendars.ALLOWED_AVAILABILITY,
                 CalendarContract.Calendars.ACCOUNT_TYPE,
-                CalendarContract.Calendars.CALENDAR_COLOR
+                CalendarContract.Calendars.CALENDAR_COLOR,
+                CalendarContract.Calendars.VISIBLE
         }, null, null, null);
 
         if (cursor != null && cursor.moveToFirst()) {
@@ -457,8 +459,8 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
             eventValues.put(CalendarContract.Events.EVENT_LOCATION, details.getString("location"));
         }
 
+        Calendar startCal = Calendar.getInstance();
         if (details.hasKey("startDate")) {
-            Calendar startCal = Calendar.getInstance();
             ReadableType type = details.getType("startDate");
 
             try {
@@ -474,8 +476,8 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
             }
         }
 
+        Calendar endCal = Calendar.getInstance();
         if (details.hasKey("endDate")) {
-            Calendar endCal = Calendar.getInstance();
             ReadableType type = details.getType("endDate");
 
             try {
@@ -503,25 +505,37 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
 
             if (recurrenceRule.hasKey("frequency")) {
                 String frequency = recurrenceRule.getString("frequency");
-                String duration = "PT1H";
                 Integer interval = null;
                 Integer occurrence = null;
+                ReadableArray positions = null;
+                ReadableArray weekDays = null;
+                ReadableArray monthDays = null;
                 String endDate = null;
                 ReadableArray daysOfWeek = null;
                 String weekStart = null;
                 Integer weekPositionInMonth = null;
 
+
                 if (recurrenceRule.hasKey("interval")) {
                     interval = recurrenceRule.getInt("interval");
-                }
-
-                if (recurrenceRule.hasKey("duration")) {
-                    duration = recurrenceRule.getString("duration");
                 }
 
                 if (recurrenceRule.hasKey("occurrence")) {
                     occurrence = recurrenceRule.getInt("occurrence");
                 }
+
+                if (recurrenceRule.hasKey("weekDays")) {
+                    weekDays = recurrenceRule.getArray("weekDays");
+                }
+
+                if (recurrenceRule.hasKey("positions")) {
+                    positions = recurrenceRule.getArray("positions");
+                }
+
+                if (recurrenceRule.hasKey("monthDays")) {
+                    monthDays = recurrenceRule.getArray("monthDays");
+                }
+
 
                 if (recurrenceRule.hasKey("endDate")) {
                     ReadableType type = recurrenceRule.getType("endDate");
@@ -536,24 +550,17 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
                     }
                 }
 
-                if (recurrenceRule.hasKey("daysOfWeek")) {
-                    daysOfWeek = recurrenceRule.getArray("daysOfWeek");
-                }
+                String rule = createRecurrenceRule(frequency, interval, endDate, occurrence, positions, weekDays, monthDays);
 
-                if (recurrenceRule.hasKey("weekStart")) {
-                    weekStart = recurrenceRule.getString("weekStart");
-                }
-
-                if (recurrenceRule.hasKey("weekPositionInMonth")) {
-                    weekPositionInMonth = recurrenceRule.getInt("weekPositionInMonth");
-                }
-
-                String rule = createRecurrenceRule(frequency, interval, endDate, occurrence, daysOfWeek, weekStart, weekPositionInMonth);
-                if (duration != null) {
-                    eventValues.put(CalendarContract.Events.DURATION, duration);
-                }
                 if (rule != null) {
                     eventValues.put(CalendarContract.Events.RRULE, rule);
+
+                    if (details.hasKey("startDate") && details.hasKey("endDate")) {
+                        long duration = endCal.getTime().getTime() - startCal.getTime().getTime();
+                        String durationString = "PT" + ((int) duration / 60000) + 'M';
+                        eventValues.put(CalendarContract.Events.DTEND, (Integer) null);
+                        eventValues.put(CalendarContract.Events.DURATION, durationString);
+                    }
                 }
             }
         }
@@ -938,15 +945,48 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
     }
 
     //region Recurrence Rule
-    private String createRecurrenceRule(String recurrence, Integer interval, String endDate, Integer occurrence, ReadableArray daysOfWeek, String weekStart, Integer weekPositionInMonth) {
+    private String createRecurrenceRule(String recurrence, Integer interval, String endDate, Integer occurrence, ReadableArray positions, ReadableArray weekDays, ReadableArray monthDays) {
         String rrule;
 
         if (recurrence.equals("daily")) {
             rrule=  "FREQ=DAILY";
         } else if (recurrence.equals("weekly")) {
             rrule = "FREQ=WEEKLY";
+            if (weekDays != null && weekDays.size() > 0) {
+                rrule += ";BYDAY=";
+                for (int i = 0; i < weekDays.size(); i++) {
+                    if (i != 0) {
+                        rrule += ",";
+                    }
+                    rrule += weekDays.getString(i);
+                }
+            }
         }  else if (recurrence.equals("monthly")) {
             rrule = "FREQ=MONTHLY";
+            if (monthDays != null && monthDays.size() > 0) {
+                rrule += ";BYMONTHDAY=";
+                for (int i = 0; i < monthDays.size(); i++) {
+                    if (i != 0) {
+                        rrule += ",";
+                    }
+                    rrule += Integer.toString(monthDays.getInt(i));
+                }
+            } else if (positions != null && positions.size() > 0 && weekDays != null && weekDays.size() > 0) {
+                rrule += ";BYDAY=";
+                for (int i = 0; i < weekDays.size(); i++) {
+                    if (i != 0) {
+                        rrule += ",";
+                    }
+                    rrule += weekDays.getString(i);
+                }
+                rrule += ";BYSETPOS=";
+                for (int i = 0; i < positions.size(); i++) {
+                    if (i != 0) {
+                        rrule += ",";
+                    }
+                    rrule += Integer.toString(positions.getInt(i));
+                }
+            }
         } else if (recurrence.equals("yearly")) {
             rrule = "FREQ=YEARLY";
         } else {
@@ -1007,6 +1047,7 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
         boolean allDay = false;
         String startDateUTC = "";
         String endDateUTC = "";
+        String rrule = "";
 
         if (cursor.getString(3) != null) {
             foundStartDate.setTimeInMillis(Long.parseLong(cursor.getString(3)));
@@ -1023,17 +1064,14 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
         }
 
         if (cursor.getString(7) != null) {
+            rrule = cursor.getString(7);
             WritableNativeMap recurrenceRule = new WritableNativeMap();
-            String[] recurrenceRules = cursor.getString(7).split(";");
+            String[] recurrenceRules = rrule.split(";");
             SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
 
             if (recurrenceRules.length > 0 && recurrenceRules[0].split("=").length > 1) {
                 event.putString("recurrence", recurrenceRules[0].split("=")[1].toLowerCase());
                 recurrenceRule.putString("frequency", recurrenceRules[0].split("=")[1].toLowerCase());
-            }
-
-            if (cursor.getColumnIndex(CalendarContract.Events.DURATION) != -1 && cursor.getString(cursor.getColumnIndex(CalendarContract.Events.DURATION)) != null) {
-                recurrenceRule.putString("duration", cursor.getString(cursor.getColumnIndex(CalendarContract.Events.DURATION)));
             }
 
             if (recurrenceRules.length >= 2 && recurrenceRules[1].split("=")[0].equals("INTERVAL")) {
@@ -1066,6 +1104,7 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
         event.putString("location", cursor.getString(6));
         event.putString("availability", availabilityStringMatchingConstant(cursor.getInt(9)));
         event.putArray("attendees", (WritableArray) findAttendeesByEventId(cursor.getString(0)));
+        event.putString("rrule", rrule);
 
         if (cursor.getInt(10) > 0) {
             event.putArray("alarms", findReminderByEventId(cursor.getString(0), Long.parseLong(cursor.getString(3))));
@@ -1106,6 +1145,7 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
         calendar.putString("source", cursor.getString(2));
         calendar.putArray("allowedAvailabilities", calendarAllowedAvailabilitiesFromDBString(cursor.getString(5)));
         calendar.putString("type", cursor.getString(6));
+        calendar.putBoolean("visible", cursor.getInt(8) == 1);
 
         String colorHex = "#FFFFFF";
         try {
@@ -1143,15 +1183,52 @@ public class CalendarEvents extends ReactContextBaseJavaModule {
 
             attendee.putString("name", cursor.getString( 2));
             attendee.putString("email", cursor.getString(3));
+
             attendee.putString("type", cursor.getString(4));
             attendee.putString("relationship", cursor.getString(5));
-            attendee.putString("status", cursor.getString(6));
+            int attendeeeType = cursor.getInt(4);
+            int attendeeRelashionship = cursor.getInt(5);
+            String attendeeRole = getAttendeeRole(attendeeRelashionship, attendeeeType);
+            attendee.putString("role", attendeeRole);
+
+            attendee.putString("status", getAttendeeStatus(cursor.getInt(6)));
             attendee.putString("identity", cursor.getString(7));
             attendee.putString("id_namespace", cursor.getString(8));
+
             results.pushMap(attendee);
         }
 
         return results;
+    }
+
+    private String getAttendeeStatus(int attendeeStatus) {
+        switch (attendeeStatus) {
+            case CalendarContract.Attendees.ATTENDEE_STATUS_ACCEPTED:
+                return "accepted";
+            case CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED:
+                return "declined";
+            case CalendarContract.Attendees.ATTENDEE_STATUS_INVITED:
+                return "needs-action";
+            case CalendarContract.Attendees.ATTENDEE_STATUS_TENTATIVE:
+                return "tentative";
+            case CalendarContract.Attendees.ATTENDEE_STATUS_NONE:
+            default:
+                return "unknown";
+        }
+    }
+
+    private String getAttendeeRole(int attendeeRelashionship, int attendeeType) {
+        if (attendeeRelashionship == CalendarContract.Attendees.RELATIONSHIP_ORGANIZER) {
+            return "chair";
+        } else if(attendeeRelashionship == CalendarContract.Attendees.RELATIONSHIP_ATTENDEE
+                && attendeeType == CalendarContract.Attendees.TYPE_REQUIRED) {
+            return "req-participant";
+        } else if(attendeeRelashionship == CalendarContract.Attendees.RELATIONSHIP_ATTENDEE
+                && attendeeType == CalendarContract.Attendees.TYPE_OPTIONAL) {
+            return "opt-participant";
+        } else { // NONE, PERFORMER, SPEAKER
+            return "unknown";
+        }
     }
     // endregion
 

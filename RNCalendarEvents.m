@@ -23,6 +23,7 @@ static NSString *const _occurrenceDate = @"occurrenceDate";
 static NSString *const _isDetached = @"isDetached";
 static NSString *const _availability = @"availability";
 static NSString *const _attendees    = @"attendees";
+static NSString *const _rrule = @"rrule";
 dispatch_queue_t serialQueue;
 
 @implementation RNCalendarEvents
@@ -146,7 +147,7 @@ RCT_EXPORT_MODULE()
     }
 
     if (recurrence) {
-        EKRecurrenceRule *rule = [self createRecurrenceRule:recurrence interval:0 occurrence:0 endDate:nil days: nil weekPositionInMonth: 0];
+        EKRecurrenceRule *rule = [self createRecurrenceRule:recurrence interval:0 occurrence:0 endDate:nil weekDays:nil monthDays:nil positions:nil];
         if (rule) {
             calendarEvent.recurrenceRules = [NSArray arrayWithObject:rule];
         }
@@ -157,10 +158,13 @@ RCT_EXPORT_MODULE()
         NSInteger interval = [RCTConvert NSInteger:recurrenceRule[@"interval"]];
         NSInteger occurrence = [RCTConvert NSInteger:recurrenceRule[@"occurrence"]];
         NSDate *endDate = [RCTConvert NSDate:recurrenceRule[@"endDate"]];
-        NSArray *daysOfWeek = [RCTConvert NSArray:recurrenceRule[@"daysOfWeek"]];
-        NSInteger weekPositionInMonth = [RCTConvert NSInteger:recurrenceRule[@"weekPositionInMonth"]];
-
-        EKRecurrenceRule *rule = [self createRecurrenceRule:frequency interval:interval occurrence:occurrence endDate:endDate days:daysOfWeek weekPositionInMonth: weekPositionInMonth];
+        
+        NSArray *monthDays = [RCTConvert NSArray:recurrenceRule[@"monthDays"]];
+        NSArray *positions = [RCTConvert NSArray:recurrenceRule[@"positions"]];
+        
+        NSArray *weekDays = [RCTConvert NSArray:recurrenceRule[@"weekDays"]];
+        
+        EKRecurrenceRule *rule = [self createRecurrenceRule:frequency interval:interval occurrence:occurrence endDate:endDate weekDays:weekDays monthDays:monthDays positions:positions];
         if (rule) {
             calendarEvent.recurrenceRules = [NSArray arrayWithObject:rule];
         } else {
@@ -300,49 +304,7 @@ RCT_EXPORT_MODULE()
     return recurrence;
 }
 
--(EKRecurrenceDayOfWeek *) dayOfTheWeekMatchingName: (NSString *) day
-{
-    EKRecurrenceDayOfWeek *weekDay = nil;
-
-    if ([day isEqualToString:@"MO"]) {
-        weekDay = [EKRecurrenceDayOfWeek dayOfWeek:2];
-    } else if ([day isEqualToString:@"TU"]) {
-        weekDay = [EKRecurrenceDayOfWeek dayOfWeek:3];
-    } else if ([day isEqualToString:@"WE"]) {
-        weekDay = [EKRecurrenceDayOfWeek dayOfWeek:4];
-    } else if ([day isEqualToString:@"TH"]) {
-        weekDay = [EKRecurrenceDayOfWeek dayOfWeek:5];
-    } else if ([day isEqualToString:@"FR"]) {
-        weekDay = [EKRecurrenceDayOfWeek dayOfWeek:6];
-    } else if ([day isEqualToString:@"SA"]) {
-        weekDay = [EKRecurrenceDayOfWeek dayOfWeek:7];
-    } else if ([day isEqualToString:@"SU"]) {
-        weekDay = [EKRecurrenceDayOfWeek dayOfWeek:1];
-    }
-
-    NSLog(@"%s", "dayOfTheWeek");
-    NSLog(@"%@", weekDay);
-    return weekDay;
-}
-
--(NSMutableArray *) createRecurrenceDaysOfWeek: (NSArray *) days
-{
-    NSMutableArray *daysOfTheWeek = nil;
-
-    if (days.count) {
-        daysOfTheWeek = [[NSMutableArray alloc] init];
-
-        for (NSString *day in days) {
-            EKRecurrenceDayOfWeek *weekDay = [self dayOfTheWeekMatchingName: day];
-            [daysOfTheWeek addObject:weekDay];
-
-        }
-    }
-
-    return daysOfTheWeek;
-}
-
--(EKRecurrenceRule *)createRecurrenceRule:(NSString *)frequency interval:(NSInteger)interval occurrence:(NSInteger)occurrence endDate:(NSDate *)endDate days:(NSArray *)days weekPositionInMonth:(NSInteger) weekPositionInMonth
+-(EKRecurrenceRule *)createRecurrenceRule:(NSString *)frequency interval:(NSInteger)interval occurrence:(NSInteger)occurrence endDate:(NSDate *)endDate weekDays:(NSArray *)weekDays monthDays:(NSArray *)monthDays positions:(NSArray *)positions
 {
     EKRecurrenceRule *rule = nil;
     EKRecurrenceEnd *recurrenceEnd = nil;
@@ -352,6 +314,27 @@ RCT_EXPORT_MODULE()
     NSMutableArray *setPositions = nil;
 
     if (frequency && [validFrequencyTypes containsObject:frequency]) {
+        NSArray *recurrenceMonthDays = nil;
+        NSArray *recurrencePositions = nil;
+        
+        NSMutableArray *recurrenceWeekDays = nil;
+        if (weekDays && [weekDays count] > 0) {
+            recurrenceWeekDays = [[NSMutableArray alloc] init];
+            for (NSString *weekDay in weekDays) {
+                EKWeekday day = [self weekDayMatchingName:weekDay];
+                if (day) {
+                    [recurrenceWeekDays addObject:[EKRecurrenceDayOfWeek dayOfWeek:day]];
+                }
+            }
+        }
+        
+        if (monthDays && [monthDays count] > 0) {
+            recurrenceMonthDays = monthDays;
+        }
+        
+        if (positions && [positions count] > 0) {
+            recurrencePositions = positions;
+        }
 
         if (endDate) {
             recurrenceEnd = [EKRecurrenceEnd recurrenceEndWithEndDate:endDate];
@@ -362,20 +345,8 @@ RCT_EXPORT_MODULE()
         if (interval > 1) {
             recurrenceInterval = interval;
         }
-
-        if (weekPositionInMonth > 0) {
-            setPositions = [NSMutableArray array];
-            [setPositions addObject:[NSNumber numberWithInteger: weekPositionInMonth ]];
-        }
-        rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency:[self frequencyMatchingName:frequency]
-                                                            interval:recurrenceInterval
-                                                                 daysOfTheWeek:daysOfTheWeekRecurrence
-                                                                 daysOfTheMonth:nil
-                                                                 monthsOfTheYear:nil
-                                                                 weeksOfTheYear:nil
-                                                                 daysOfTheYear:nil
-                                                                 setPositions:setPositions
-                                                                 end:recurrenceEnd];
+        
+        rule = [[EKRecurrenceRule alloc] initRecurrenceWithFrequency:[self frequencyMatchingName:frequency] interval:recurrenceInterval daysOfTheWeek:recurrenceWeekDays daysOfTheMonth:recurrenceMonthDays monthsOfTheYear:nil weeksOfTheYear:nil daysOfTheYear:nil setPositions:recurrencePositions end:recurrenceEnd];
     }
     return rule;
 }
@@ -394,6 +365,26 @@ RCT_EXPORT_MODULE()
         default:
             return @"";
     }
+}
+
+-(EKWeekday)weekDayMatchingName:(NSString *)name
+{
+    if ([name isEqualToString:@"MO"]) {
+        return EKWeekdayMonday;
+    } else if ([name isEqualToString:@"TU"]) {
+        return EKWeekdayTuesday;
+    } else if ([name isEqualToString:@"WE"]) {
+        return EKWeekdayWednesday;
+    } else if ([name isEqualToString:@"TH"]) {
+        return EKWeekdayThursday;
+    } else if ([name isEqualToString:@"FR"]) {
+        return EKWeekdayFriday;
+    } else if ([name isEqualToString:@"SA"]) {
+        return EKWeekdaySaturday;
+    } else if ([name isEqualToString:@"SU"]) {
+        return EKWeekdaySunday;
+    }
+    return nil;
 }
 
 #pragma mark -
@@ -486,6 +477,7 @@ RCT_EXPORT_MODULE()
                                                  @"endDate": @""
                                                  },
                                          _availability: @"",
+                                         _rrule: @"",
                                          };
 
     NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
@@ -565,6 +557,48 @@ RCT_EXPORT_MODULE()
             else {
                 [formattedAttendee setValue:@"" forKey:@"name"];
             }
+
+            NSString *status;
+            switch (attendee.participantStatus) {
+                case EKParticipantStatusPending:
+                    status = @"needs-action";
+                    break;
+                case EKParticipantStatusAccepted:
+                    status = @"accepted";
+                    break;
+                case EKParticipantStatusDeclined:
+                    status = @"declined";
+                    break;
+                case EKParticipantStatusTentative:
+                    status = @"tentative";
+                    break;
+                case EKParticipantStatusDelegated:
+                case EKParticipantStatusCompleted:
+                case EKParticipantStatusInProcess:
+                default:
+                    status = @"unknown";
+                    break;
+            }
+            [formattedAttendee setValue:status forKey:@"status"];
+
+            NSString *role;
+            switch (attendee.participantRole) {
+                case EKParticipantRoleChair:
+                    role = @"chair";
+                    break;
+                case EKParticipantRoleOptional:
+                    role = @"opt-participant";
+                    break;
+                case EKParticipantRoleRequired:
+                    role = @"req-participant";
+                    break;
+                case EKParticipantRoleNonParticipant:
+                default:
+                    role = @"unknown";
+                    break;
+            }
+            [formattedAttendee setValue:role forKey:@"role"];
+
             [attendees addObject:formattedAttendee];
         }
         [formedCalendarEvent setValue:attendees forKey:_attendees];
@@ -642,6 +676,8 @@ RCT_EXPORT_MODULE()
 
     if (event.hasRecurrenceRules) {
         EKRecurrenceRule *rule = [event.recurrenceRules objectAtIndex:0];
+        NSString *rrule = [[rule description] componentsSeparatedByString:@" RRULE "][1];
+        [formedCalendarEvent setValue:rrule forKey:_rrule];
         NSString *frequencyType = [self nameMatchingFrequency:[rule frequency]];
         [formedCalendarEvent setValue:frequencyType forKey:_recurrence];
 
